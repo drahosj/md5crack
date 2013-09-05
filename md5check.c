@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <mpi.h>
 #include <string.h>
 #include <openssl/md5.h>
 
@@ -39,12 +40,17 @@ int doBruteForce( 	char *namespace,
 	return 0;
 }
 int main(int argc, char **argv) {
+	MPI_Init(&argc, &argv);
 	unsigned char target_hash[MD5_DIGEST_LENGTH];
 	
 	char * target_string = argv[1];
 	unsigned char *dst = target_hash;
 	unsigned char *end = target_hash + strlen(target_string);
 	unsigned int tmp;
+	
+	int rank;
+
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
 	while (dst < end) {
 		sscanf(target_string, "%2x", &tmp);
@@ -58,15 +64,18 @@ int main(int argc, char **argv) {
 	char *namespace = "abcdefghijklmnopqrstuvwxyz";
 	char test[atoi(argv[2])];
 
-	test[0] = 0;
+	test[0] = namespace[rank];
+	test[1] = 0;
 	int i;
-	for(i = 0; i < atoi(argv[2]); i++) {
+	for(i = 1; i < atoi(argv[2]); i++) {
 		test[i+1] = 0;
-		if (doBruteForce(namespace, target_hash, 0, test, i)) {
+		if (doBruteForce(namespace, target_hash, 1, test, i)) {
 		       	printf("Match found: %s\n", test);
+			printf("Found on slot %d\n", rank);
 			break;
 		}
 	}
+	MPI_Finalize();
 /*	int i;
 	for (i = 0; i < MD5_DIGEST_LENGTH; i++) {
 		printf("%02x", target_hash[i]);
